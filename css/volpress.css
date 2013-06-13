@@ -1,0 +1,20 @@
+/* CSS For TASKS on Admin */
+.volpress_title {
+	width: 250px;
+	font-weight: bold;
+}
+.volpress_qty {
+	width: 50px;
+	text-align: center;
+}
+.volpress_time {
+	width: 62px;
+	text-align: center;
+}
+.volpress_sort_cell {
+	cursor: move;
+	text-align: center;
+}
+.volpress_add_task {
+	cursor: pointer;
+}
