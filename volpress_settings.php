@@ -157,6 +157,87 @@ class VolPress_Admin_Page {
 
 /* Usage */
  
+
+	$VolPress_Settings = new VolPress_Admin_Page('',__('VolPress Settings','domain'),__('Settings','domain'), 'manage_options','copy','volpress_copy_body_content', 'volpress_copy_body_footer');
+
+	function volpress_copy_body_content() {
+		global $wpdb;
+		//printPre($_GET);
+
+		//which link? blank is custom (leave as draft) and week and month are exact and go live immediately
+		$new_day = '';
+		if (isset($_GET['time']) && $_GET['time'] == 'week') $new_day = 'week';
+		if (isset($_GET['time']) && $_GET['time'] == 'month') $new_day = 'month';
+		if ($new_day) { //setup defaults
+			$new_status = 'publish';
+		} else {
+			$new_status = 'draft';
+		}
+
+		//copy post data we care about
+		$now_time = date('Y-m-d H:i:s');
+		$post = get_post($_GET['post']); //printPre($post); exit();
+		$post_data = array(
+			'post_author' => $post->post_author,
+			'post_content' => $post->post_content,
+			'post_title' => $post->post_title,
+			'post_status' => $new_status,
+			'post_name' => wp_unique_post_slug($post->post_name, 0, 'publish', 'volpress', ''), //use ID=0 instead of current post because we want a new unique name
+			'post_type' => $post->post_type,
+			'post_date' => $now_time,
+			'post_date_gmt' => $now_time,
+			'post_modified' => $now_time,
+			'post_modified_gmt' => $now_time,
+			//'' => $post->,
+		);
+		$wpdb->insert('wp_posts', $post_data); //insert
+		$new_id = $wpdb->insert_id;
+		//echo '|'.$new_id.'|';
+		if ($new_id) {
+
+			//add categories
+			$cat_ids = array();
+			$cats = get_the_terms( $post->ID, 'volpress-cats' ); //printPre($cats); exit();
+			foreach ($cats AS $cat) {
+				$cat_ids[] = (int)$cat->term_id;
+			}
+			wp_set_object_terms( $new_id, $cat_ids, 'volpress-cats' );
+
+			//check for auto-date of week or month
+			if ($new_day) {
+				//get old day
+				$old_day = get_post_meta( $post->ID, 'volpress_date', true );
+				echo $old_day;
+				//add to it
+				$new_date = date('Y-m-d', strtotime($old_day.'+ 1 '.$new_day));
+				echo '<hr>'.$new_date;
+				update_post_meta( $new_id, 'volpress_date', $new_date ); //update meta
+			}
+
+			//copy tasks
+			$strSQL = "INSERT INTO ".VOLPRESS_TABLE_TASKS."(task_event, task_title, task_qty_min, task_qty_max, task_time_start, task_time_end, task_sort) ";
+			$strSQL .= "SELECT ".$new_id." AS task_event, task_title, task_qty_min, task_qty_max, task_time_start, task_time_end, task_sort FROM ".VOLPRESS_TABLE_TASKS." WHERE task_event = ".$post->ID;
+			//echo '<hr>'.$strSQL;
+			$new_tasks = $wpdb->query($strSQL);
+			//echo '<hr>|'.$new_tasks.'| new tasks added<br>';
+			if ($new_day) {
+				$new_url = "edit.php?post_type=volpress";
+			} else {
+				$new_url = "post.php?post=".$new_id."&action=edit&message=11";
+			}
+			//exit($new_url);
+			wp_redirect( $new_url, $status = 302 );
+		} else { //failure creating new post so back to the list
+			wp_redirect( "edit.php?post_type=volpress", $status = 302 );
+		}
+	}
+
+	function volpress_copy_body_footer() {
+		//no need for footer in working and redirect page
+	}
+
+
+
 	//Create a page
 	$VolPress_Settings = new VolPress_Admin_Page('edit.php?post_type=volpress',__('VolPress Settings','domain'),__('Settings','domain'), 'manage_options','settings','volpress_settings_body_content', 'volpress_settings_body_footer');
  

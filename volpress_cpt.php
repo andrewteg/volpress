@@ -15,6 +15,7 @@ if(!class_exists('VolPress_CPT')) {
 			// activate/deactivate/initialize
 			add_action('init', array(&$this, 'init'));
 			add_action('admin_head', array(&$this, 'plugin_header'));
+			add_filter('post_row_actions', array(&$this, 'plugin_row_actions'), 10, 2);
 		} // END public function __construct()
 
 		/**
@@ -76,9 +77,7 @@ if(!class_exists('VolPress_CPT')) {
 				'query_var'         => true,
 				'rewrite'           => array( 'slug' => 'volunteers' ),
 			);
-			register_taxonomy( 'volpress_cats', array( 'x', self::POST_TYPE ), $volpress_cat_args );
-			//add_rewrite_rule('^volunteer/categories/([^/]*)/([^/]*)/?','index.php?page_id=12&food=$matches[1]&variety=$matches[2]','top');
-						//[volunteer/categories/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$] => index.php?taxonomy=volpress_cats&term=$matches[1]&feed=$matches[2]
+			register_taxonomy( 'volpress-cats', array( 'x', self::POST_TYPE ), $volpress_cat_args );
 
 			// Add Filters to Update Messages and Save Custom Fields, Customize Display, etc.
 			add_filter('post_updated_messages', array($this, 'volpress_update_messages'));
@@ -91,26 +90,27 @@ if(!class_exists('VolPress_CPT')) {
 		} // END public function init()
 
 
+		/**
+		 * Add Plugin Icon to Header
+		 */
 		function plugin_header() {
 			global $post_type;
 			if (($_GET['post_type'] == self::POST_TYPE) || ($post_type == self::POST_TYPE)) : ?>
 			<style>#icon-edit { background:transparent url('<?php echo VOLPRESS_PLUGIN_URL .'images/hand.png';?>') no-repeat 0px 7px; width:15px; }</style>
 			<?php endif;
 		}
-		/*
-		function plugin_header() {
-			global $post_type;
-			?>
-			<style type="text/css" media="screen">
-				#menu-posts-POSTTYPE .wp-menu-image {
-					background: url('<?php echo VOLPRESS_PLUGIN_URL .'images/hand.png';?>') no-repeat 6px -17px !important;
-				}
-				#menu-posts-POSTTYPE:hover .wp-menu-image, #menu-posts-POSTTYPE.wp-has-current-submenu .wp-menu-image {
-					background-position:6px 7px!important;
-				}
-			</style>
-			<?php
-		}*/
+
+		/**
+		 * Add Plugin Icon to Header
+		 */
+		function plugin_row_actions($actions, $post) {
+			if ($post->post_type == self::POST_TYPE){
+				$actions['copy'] = "<br /><a class='volpress_copy' href='" . admin_url( 'edit.php?post_type='.self::POST_TYPE.'&page=copy&post='.$post->ID) . "'>" . __( 'Copy', 'cgc_ub' ) . "</a> 
+					(+<a class='volpress_copy' href='" . admin_url( 'edit.php?post_type='.self::POST_TYPE.'&page=copy&time=week&post='.$post->ID) . "'>Week</a>)
+					(+<a class='volpress_copy' href='" . admin_url( 'edit.php?post_type='.self::POST_TYPE.'&page=copy&time=month&post='.$post->ID) . "'>Month</a>)";
+				return $actions;
+			}
+		}
 
 		/**
 		 * Create the post type
@@ -131,6 +131,8 @@ if(!class_exists('VolPress_CPT')) {
 				// translators: Publish box date format, see http://php.net/date
 				date_i18n( __( 'M j, Y @ G:i' ), strtotime( $post->post_date ) ), esc_url( get_permalink($post_ID) ) ),
 			10 => sprintf( __('Volunteer Event draft updated. <a target="_blank" href="%s">Preview volunteer</a>', 'your_text_domain'), esc_url( add_query_arg( 'preview', 'true', get_permalink($post_ID) ) ) ),
+			11 => 'Volunteer Event Copied. Please add the new date and Publish!',
+			//12 => 'Volunteer Event Copied and Published!',
 			);
 
 			return $messages;
@@ -240,7 +242,9 @@ if(!class_exists('VolPress_CPT')) {
 						'ajaxurl' => admin_url( 'admin-ajax.php' ),
 						'volpress_plugin_url' => VOLPRESS_PLUGIN_URL, 
 						'volpress_plugin_path' => VOLPRESS_PLUGIN_PATH, 
-						'post_id' => $post->ID
+						'post_id' => $post->ID,
+						'date_format' => get_option( 'volpress_date_format' ),
+						'time_format' => get_option( 'volpress_time_format' ),
 					);
 				wp_localize_script('volpress_admin', 'php_data', $volpress_script_data);
 
@@ -294,16 +298,6 @@ if(!class_exists('VolPress_CPT')) {
 				break;
 			case 2:
 				//echo 'DF=>'. $date_format.'|<br>TF=>'.$time_format.'|';
-				?>
-				<style>
-					div.ui-datepicker{ font-size:90%; }
-				</style>
-				<script>
-					jQuery(function() {
-						jQuery( "#volpress_date" ).datepicker({ dateFormat: '<?php echo $date_format; ?>' });
-					});
-				</script>			    
-				<?php
 				echo 'Event Date: <input type="text" name="volpress_new_field[volpress_date]" id="volpress_date" style="" value="'.get_post_meta($post->ID, 'volpress_date', true).'" />';
 				echo '<br /><br /><em>Times are set on each individual task so volunteers can better see when they can be expected to arrive and be finished.</em>';
 				break;
@@ -372,14 +366,12 @@ function myajax_submit() {
 
 
 
-
-
 /*
  * Replace Taxonomy slug with Post Type slug in url
  * Version: 1.1
  */
 function taxonomy_slug_rewrite($wp_rewrite) {
-	//printPre($wp_rewrite->rules);
+	printPre($wp_rewrite->rules);
 	/*
 	$rules = array();
 	// get all custom taxonomies
@@ -420,4 +412,4 @@ function taxonomy_slug_rewrite($wp_rewrite) {
 	printPre($wp_rewrite);
 	*/
 }
-add_filter('generate_rewrite_rules', 'taxonomy_slug_rewrite');
+//add_filter('generate_rewrite_rules', 'taxonomy_slug_rewrite');

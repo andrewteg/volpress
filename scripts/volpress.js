@@ -2,6 +2,9 @@ jQuery(document).ready(function($) {
 	//alert('Handler for .ready() started.');
 	volpress_sort_rows(); //in case there is an error in the retreived data this will reset to what the user sees
 
+	//add datepicker
+	jQuery( "#volpress_date" ).datepicker({ dateFormat: php_data.date_format });
+
 	//make sortable
 	$( "#volpress_task_table #volpress_task_table_body" ).sortable({
 		stop: volpress_sort_rows,
